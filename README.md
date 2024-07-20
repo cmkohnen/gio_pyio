@@ -1,4 +1,4 @@
-# gio_pyio
+# gio-pyio
 
 Python like IO for gio.
 
