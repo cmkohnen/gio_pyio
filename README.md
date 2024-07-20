@@ -11,7 +11,7 @@ expect files in the form of
 See the example below:
 ```python
 file = Gio.File.new_for_path('/path/to/json/file.json')
-with gio_pyio.open('rb') as file_like:
+with gio_pyio.open(file, 'rb') as file_like:
     data = json.load(file_like)
     print(data)
 ```
