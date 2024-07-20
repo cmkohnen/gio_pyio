@@ -303,6 +303,8 @@ def open(file, mode='r', buffering=-1, encoding=None, errors=None,
     pythons builtin :py:func:`open` function. See `Reading and Writing Files`_
     for examples of io using python.
 
+    :param Gio.File file:
+        The file to open.
     :param str mode:
         Mode in which the file is opened. Defaults to 'r' which means
         open for reading in text mode. Other common values are 'w' for
