@@ -23,5 +23,6 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/cmkohnen/gio_pyio"
+Repository = "https://github.com/cmkohnen/gio_pyio"
 Issues = "https://github.com/cmkohnen/gio_pyio/issues"
+Documentation = "https://gio-pyio.readthedocs.io"
