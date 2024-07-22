@@ -6,4 +6,9 @@ build:
     python: "3.12"
 
 sphinx:
-  configuration: doc/source/conf.py
+  configuration: docs/source/conf.py
+
+python:
+  install:
+    - method: pip
+      path: .

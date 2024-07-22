@@ -4,10 +4,11 @@
 gio-pyio Documentation
 ======================
 
-====== ====================================
+====== =====================================
 PyPI   https://pypi.python.org/pypi/gio-pyio
 GitHub https://github.com/cmkohnen/gio_pyio
-====== ====================================
+Docs   https://gio-pyio.readthedocs.io/
+====== =====================================
 
 :py:mod:`gio_pyio` API
 ======================
