@@ -276,11 +276,12 @@ class StreamWrapper(io.IOBase):
         """
         return self._output_stream is not None
 
-    def write(self, b) -> int:
+    def write(self, b):
         """Write *b* to the underlying stream.
 
         :param bytes-like b:
             Content to be written to the underlying stream.
+        :rtype: int
         :returns:
             The number of bytes written to the underlying stream.
         :raises ValueError:
@@ -300,8 +301,8 @@ def open(file, mode='r', buffering=-1, encoding=None, errors=None,
     r"""Open the file and create a corresponding `file object`_.
 
     If the file cannot be opened, an OSError is raised. This behaves analog to
-    pythons builtin :py:func:`open` function. See `Reading and Writing Files`_
-    for examples of io using python.
+    pythons builtin :external:py:func:`open` function. See
+    `Reading and Writing Files`_ for examples of io using python.
 
     :param Gio.File file:
         The file to open.
@@ -383,7 +384,7 @@ def open(file, mode='r', buffering=-1, encoding=None, errors=None,
         in read binary mode, it will be a BufferedReader; in write binary
         and append binary modes, it will be a BufferedWriter, and in
         read/write mode, it will be a BufferedRandom. If buffering is
-        disabled, the object will be a `FileLikeIO`.
+        disabled, the object will be a :py:class:`StreamWrapper`.
     :raises TypeError:
         Invalid argument passed.
     :raises ValueError:
