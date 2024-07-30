@@ -19,7 +19,7 @@ class GioFileLikeTests(unittest.TestCase):
     def setUp(self):
         self.file, stream = Gio.File.new_tmp('TestGFile.XXXXXX')
         stream.close()
-        self.f = gio_pyio.open(self.file, 'wb')
+        self.f = gio_pyio.open(self.file, 'wb', native=False)
 
     def tearDown(self):
         if self.f:
@@ -61,7 +61,7 @@ class GioFileLikeTests(unittest.TestCase):
         self.f.write(b'12')
         self.f.close()
         a = array('b', b'x' * 10)
-        self.f = gio_pyio.open(self.file, 'rb')
+        self.f = gio_pyio.open(self.file, 'rb', native=False)
         n = self.f.readinto(a)
         self.assertEqual(b'12', a.tobytes()[:n])
 
@@ -69,7 +69,7 @@ class GioFileLikeTests(unittest.TestCase):
         # verify readinto refuses text files
         a = array('b', b'x' * 10)
         self.f.close()
-        self.f = gio_pyio.open(self.file, encoding="utf-8")
+        self.f = gio_pyio.open(self.file, encoding="utf-8", native=False)
         if hasattr(self.f, "readinto"):
             self.assertRaises(TypeError, self.f.readinto, a)
 
@@ -78,7 +78,7 @@ class GioFileLikeTests(unittest.TestCase):
         self.f.close()
 
         ba = bytearray(b'abcdefgh')
-        with gio_pyio.open(self.file, 'rb') as f:
+        with gio_pyio.open(self.file, 'rb', native=False) as f:
             n = f.readinto(ba)
         self.assertEqual(ba, b'\x01\x02\x00\xffefgh')
         self.assertEqual(n, 4)
@@ -88,7 +88,7 @@ class GioFileLikeTests(unittest.TestCase):
         userlist = UserList([b'1', b'2'])
         self.f.writelines(userlist)
         self.f.close()
-        self.f = gio_pyio.open(self.file, 'rb')
+        self.f = gio_pyio.open(self.file, 'rb', native=False)
         buf = self.f.read()
         self.assertEqual(buf, b'12')
 
@@ -217,7 +217,7 @@ class GioFileLikeTests(unittest.TestCase):
         bag.close()
         # Test for appropriate errors mixing read* and iteration
         for methodname, args in methods:
-            f = gio_pyio.open(self.file, 'rb')
+            f = gio_pyio.open(self.file, 'rb', native=False)
             self.assertEqual(next(f), filler)
             meth = getattr(f, methodname)
             meth(*args)  # This simply shouldn't fail
@@ -230,7 +230,7 @@ class GioFileLikeTests(unittest.TestCase):
         # ("h", "a", "m", "\n"), so 4096 lines of that should get us
         # exactly on the buffer boundary for any power-of-2 buffersize
         # between 4 and 16384 (inclusive).
-        f = gio_pyio.open(self.file, 'rb')
+        f = gio_pyio.open(self.file, 'rb', native=False)
         for i in range(nchunks):
             next(f)
         testline = testlines.pop(0)
@@ -274,7 +274,7 @@ class GioFileLikeTests(unittest.TestCase):
         f.close()
 
         # Reading after iteration hit EOF shouldn't hurt either
-        f = gio_pyio.open(self.file, 'rb')
+        f = gio_pyio.open(self.file, 'rb', native=False)
         try:
             for line in f:
                 pass
@@ -290,19 +290,19 @@ class GioFileLikeTests(unittest.TestCase):
 
     def testAbles(self):
         try:
-            f = gio_pyio.open(self.file, 'w')
+            f = gio_pyio.open(self.file, 'w', native=False)
             self.assertEqual(f.readable(), False)
             self.assertEqual(f.writable(), True)
             self.assertEqual(f.seekable(), True)
             f.close()
 
-            f = gio_pyio.open(self.file, 'r')
+            f = gio_pyio.open(self.file, 'r', native=False)
             self.assertEqual(f.readable(), True)
             self.assertEqual(f.writable(), False)
             self.assertEqual(f.seekable(), True)
             f.close()
 
-            f = gio_pyio.open(self.file, 'a+')
+            f = gio_pyio.open(self.file, 'a+', native=False)
             self.assertEqual(f.readable(), True)
             self.assertEqual(f.writable(), True)
             self.assertEqual(f.seekable(), True)
@@ -313,13 +313,13 @@ class GioFileLikeTests(unittest.TestCase):
 
     def testAppend(self):
         try:
-            f = gio_pyio.open(self.file, 'wb')
+            f = gio_pyio.open(self.file, 'wb', native=False)
             f.write(b'spam')
             f.close()
-            f = gio_pyio.open(self.file, 'ab')
+            f = gio_pyio.open(self.file, 'ab', native=False)
             f.write(b'eggs')
             f.close()
-            f = gio_pyio.open(self.file, 'rb')
+            f = gio_pyio.open(self.file, 'rb', native=False)
             d = f.read()
             f.close()
             self.assertEqual(d, b'spameggs')

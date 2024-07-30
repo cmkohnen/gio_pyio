@@ -297,7 +297,7 @@ class StreamWrapper(io.IOBase):
 
 
 def open(file, mode='r', buffering=-1, encoding=None, errors=None,
-         newline=None):
+         newline=None, native=True):
     r"""Open the file and create a corresponding `file object`_.
 
     If the file cannot be opened, an OSError is raised. This behaves analog to
@@ -376,6 +376,9 @@ def open(file, mode='r', buffering=-1, encoding=None, errors=None,
           newline is '', no translation takes place. If newline is any of
           the other legal values, any '\n' characters written are translated
           to the given string.
+    :param bool native:
+        Try and obtain a file descriptor and use python standard io libraries.
+        If False, the result will always be a wrapped Gio stream.
     :rtype: file-like
     :returns:
         A new `file object`_. When used to open a file in a text mode ('w',
@@ -384,7 +387,9 @@ def open(file, mode='r', buffering=-1, encoding=None, errors=None,
         in read binary mode, it will be a BufferedReader; in write binary
         and append binary modes, it will be a BufferedWriter, and in
         read/write mode, it will be a BufferedRandom. If buffering is
-        disabled, the object will be a :py:class:`StreamWrapper`.
+        disabled, the object will either be a FileIO or
+        :py:class:`StreamWrapper` depending on python native libraries can be
+        used.
     :raises TypeError:
         Invalid argument passed.
     :raises ValueError:
@@ -430,9 +435,8 @@ def open(file, mode='r', buffering=-1, encoding=None, errors=None,
 
     # Not all files, have a path associated, in that case, we use the
     # result of `file.get_basename()`
-    rep_str = file.peek_path()
-    if rep_str is None:
-        rep_str = file.get_basename()
+    path = file.peek_path()
+    rep_str = file.get_basename() if path is None else path
     file_type = file.query_file_type(Gio.FileQueryInfoFlags.NONE, None)
     if file_type == Gio.FileType.DIRECTORY:
         raise OSError(21, "Is a directory: '%s'" % rep_str)
@@ -441,38 +445,40 @@ def open(file, mode='r', buffering=-1, encoding=None, errors=None,
             raise OSError(17, "File exists: '%s'" % rep_str)
     elif reading:
         raise OSError(2, "No such file or directory: '%s'" % rep_str)
+    if buffering == 0 and not binary:
+        raise ValueError("can't have unbuffered text I/O")
 
-    stream = None
-    # Match given mode to respective opener. All calls are non-async, thus
-    # blocking as well as not cancellable.
-    if updating:
-        if creating:
-            stream = file.create_readwrite(Gio.FileCreateFlags.NONE, None)
-        elif writing:
-            stream = file.replace_readwrite(None, False,
-                                            Gio.FileCreateFlags.NONE, None)
+    if native and path is not None:
+        file_like = io.FileIO(path, mode)
+    else:
+        stream = None
+        # Match given mode to respective opener. All calls are non-async, thus
+        # blocking as well as not cancellable.
+        if updating:
+            if creating:
+                stream = file.create_readwrite(Gio.FileCreateFlags.NONE, None)
+            elif writing:
+                stream = file.replace_readwrite(None, False,
+                                                Gio.FileCreateFlags.NONE, None)
+            else:
+                stream = file.open_readwrite(None)
         else:
-            stream = file.open_readwrite(None)
-    else:
-        if creating:
-            stream = file.create(Gio.FileCreateFlags.NONE, None)
-        elif reading:
-            stream = file.read(None)
-        elif writing:
-            stream = file.replace(None, False, Gio.FileCreateFlags.NONE,
-                                  None)
-        elif appending:
-            stream = file.append_to(Gio.FileCreateFlags.NONE, None)
+            if creating:
+                stream = file.create(Gio.FileCreateFlags.NONE, None)
+            elif reading:
+                stream = file.read(None)
+            elif writing:
+                stream = file.replace(None, False, Gio.FileCreateFlags.NONE,
+                                      None)
+            elif appending:
+                stream = file.append_to(Gio.FileCreateFlags.NONE, None)
 
-    # at this point stream should not be `None` or input validation has
-    # failed substantially
-    assert stream is not None
-    file_like = StreamWrapper(stream)
+        # at this point stream should not be `None` or input validation has
+        # failed substantially
+        assert stream is not None
+        file_like = StreamWrapper(stream)
     line_buffering = False
-    if buffering == 0:
-        if not binary:
-            raise ValueError("can't have unbuffered text I/O")
-    else:
+    if buffering != 0:
         if buffering == 1:
             buffering = -1
             line_buffering = True
