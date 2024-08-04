@@ -449,7 +449,14 @@ def open(file, mode='r', buffering=-1, encoding=None, errors=None,
         raise ValueError("can't have unbuffered text I/O")
 
     if native and path is not None:
-        file_like = io.FileIO(path, mode)
+        file_like = io.FileIO(
+            path,
+            (creating and "x" or "") +
+            (reading and "r" or "") +
+            (writing and "w" or "") +
+            (appending and "a" or "") +
+            (updating and "+" or ""),
+        )
     else:
         stream = None
         # Match given mode to respective opener. All calls are non-async, thus

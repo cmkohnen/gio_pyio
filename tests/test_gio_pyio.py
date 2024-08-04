@@ -174,6 +174,12 @@ class GioFileLikeTests(unittest.TestCase):
             else:
                 f.close()
                 self.fail('%r is an invalid file mode' % mode)
+        # check valid mode strings
+        for mode in ("rt", "wb", "a+"):
+            f = gio_pyio.open(self.file, mode, native=False)
+            f.close()
+            f = gio_pyio.open(self.file, mode, native=True)
+            f.close()
 
     def testBadModeArgument(self):
         # verify that we get a sensible error message for bad mode argument
