@@ -3,13 +3,18 @@
 # PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
 # https://github.com/python/cpython/blob/main/LICENSE
 
-import unittest
+import contextlib
+import gc
+import json
+import subprocess
 import sys
+import unittest
 from array import array
-from weakref import proxy
 from collections import UserList
+from pathlib import Path
+from weakref import proxy
 
-from gi.repository import Gio, GLib
+from gi.repository import GLib, Gio
 
 import gio_pyio
 
@@ -24,10 +29,8 @@ class GioFileLikeTests(unittest.TestCase):
     def tearDown(self):
         if self.f:
             self.f.close()
-        try:
+        with contextlib.suppress(GLib.Error):
             self.file.delete(None)
-        except GLib.GError:
-            pass
 
     def testWeakRefs(self):
         # verify weak references
@@ -36,6 +39,7 @@ class GioFileLikeTests(unittest.TestCase):
         self.assertEqual(self.f.tell(), p.tell())
         self.f.close()
         self.f = None
+        gc.collect()
         self.assertRaises(ReferenceError, getattr, p, 'tell')
 
     def testSeekTell(self):
@@ -69,8 +73,8 @@ class GioFileLikeTests(unittest.TestCase):
         # verify readinto refuses text files
         a = array('b', b'x' * 10)
         self.f.close()
-        self.f = gio_pyio.open(self.file, encoding="utf-8", native=False)
-        if hasattr(self.f, "readinto"):
+        self.f = gio_pyio.open(self.file, encoding='utf-8', native=False)
+        if hasattr(self.f, 'readinto'):
             self.assertRaises(TypeError, self.f.readinto, a)
 
     def testReadintoByteArray(self):
@@ -112,20 +116,20 @@ class GioFileLikeTests(unittest.TestCase):
     def testWritelinesError(self):
         self.assertRaises(TypeError, self.f.writelines, [1, 2, 3])
         self.assertRaises(TypeError, self.f.writelines, None)
-        self.assertRaises(TypeError, self.f.writelines, "abc")
+        self.assertRaises(TypeError, self.f.writelines, 'abc')
 
     def testErrors(self):
         f = self.f
         self.assertFalse(f.isatty())
         self.assertFalse(f.closed)
 
-        if hasattr(f, "readinto"):
-            self.assertRaises((OSError, TypeError), f.readinto, "")
+        if hasattr(f, 'readinto'):
+            self.assertRaises((OSError, TypeError), f.readinto, '')
         f.close()
         self.assertTrue(f.closed)
 
     def testReject(self):
-        self.assertRaises(TypeError, self.f.write, "Hello!")
+        self.assertRaises(TypeError, self.f.write, 'Hello!')
 
     def testMethods(self):
         methods = [('fileno', ()),
@@ -133,16 +137,16 @@ class GioFileLikeTests(unittest.TestCase):
                    ('isatty', ()),
                    ('__next__', ()),
                    ('read', ()),
-                   ('write', (b"",)),
+                   ('write', (b'',)),
                    ('readline', ()),
                    ('readlines', ()),
                    ('seek', (0,)),
                    ('tell', ()),
-                   ('write', (b"",)),
+                   ('write', (b'',)),
                    ('writelines', ([],)),
                    ('__iter__', ()),
+                   ('truncate', ()),
                    ]
-        methods.append(('truncate', ()))
 
         # __exit__ should close the file
         self.f.__exit__(None, None, None)
@@ -158,7 +162,7 @@ class GioFileLikeTests(unittest.TestCase):
         # it must also return None if an exception was given
         try:
             1 / 0
-        except:
+        except ZeroDivisionError:
             self.assertEqual(self.f.__exit__(*sys.exc_info()), None)
 
     def testReadWhenWriting(self):
@@ -166,7 +170,7 @@ class GioFileLikeTests(unittest.TestCase):
 
     def testModeStrings(self):
         # check invalid mode strings
-        for mode in ("", "aU", "wU+", "U+", "+U", "rU+"):
+        for mode in ('', 'aU', 'wU+', 'U+', '+U', 'rU+'):
             try:
                 f = gio_pyio.open(self.file, mode)
             except ValueError:
@@ -175,7 +179,7 @@ class GioFileLikeTests(unittest.TestCase):
                 f.close()
                 self.fail('%r is an invalid file mode' % mode)
         # check valid mode strings
-        for mode in ("rt", "wb", "a+"):
+        for mode in ('rt', 'wb', 'a+'):
             f = gio_pyio.open(self.file, mode, native=False)
             f.close()
             f = gio_pyio.open(self.file, mode, native=True)
@@ -183,38 +187,38 @@ class GioFileLikeTests(unittest.TestCase):
 
     def testBadModeArgument(self):
         # verify that we get a sensible error message for bad mode argument
-        bad_mode = "qwerty"
+        bad_mode = 'qwerty'
         try:
             f = gio_pyio.open(self.file, bad_mode)
         except ValueError as msg:
             if msg.args[0] != 0:
                 s = str(msg)
                 if bad_mode not in s:
-                    self.fail("bad error message for invalid mode: %s" % s)
+                    self.fail('bad error message for invalid mode: %s' % s)
             # if msg.args[0] == 0, we're probably on Windows where there may be
             # no obvious way to discover why open() failed.
         else:
             f.close()
-            self.fail("no error for invalid mode: %s" % bad_mode)
+            self.fail('no error for invalid mode: %s' % bad_mode)
 
     def testIteration(self):
         # Test the complex interaction when mixing file-iteration and the
         # various read* methods.
         dataoffset = 16384
-        filler = b"ham\n"
+        filler = b'ham\n'
         assert not dataoffset % len(filler), \
-            "dataoffset must be multiple of len(filler)"
+            'dataoffset must be multiple of len(filler)'
         nchunks = dataoffset // len(filler)
         testlines = [
-            b"spam, spam and eggs\n",
-            b"eggs, spam, ham and spam\n",
-            b"saussages, spam, spam and eggs\n",
-            b"spam, ham, spam and eggs\n",
-            b"spam, spam, spam, spam, spam, ham, spam\n",
-            b"wonderful spaaaaaam.\n"
+            b'spam, spam and eggs\n',
+            b'eggs, spam, ham and spam\n',
+            b'saussages, spam, spam and eggs\n',
+            b'spam, ham, spam and eggs\n',
+            b'spam, spam, spam, spam, spam, ham, spam\n',
+            b'wonderful spaaaaaam.\n',
         ]
-        methods = [("readline", ()), ("read", ()), ("readlines", ()),
-                   ("readinto", (array("b", b" " * 100),))]
+        methods = [('readline', ()), ('read', ()), ('readlines', ()),
+                   ('readinto', (array('b', b' ' * 100),))]
 
         # Prepare the testfile
         bag = gio_pyio.open(self.file, 'wb')
@@ -237,52 +241,52 @@ class GioFileLikeTests(unittest.TestCase):
         # exactly on the buffer boundary for any power-of-2 buffersize
         # between 4 and 16384 (inclusive).
         f = gio_pyio.open(self.file, 'rb', native=False)
-        for i in range(nchunks):
+        for _i in range(nchunks):
             next(f)
         testline = testlines.pop(0)
         try:
             line = f.readline()
         except ValueError:
-            self.fail("readline() after next() with supposedly empty "
-                      "iteration-buffer failed anyway")
+            self.fail('readline() after next() with supposedly empty '
+                      'iteration-buffer failed anyway')
         if line != testline:
-            self.fail("readline() after next() with empty buffer "
-                      "failed. Got %r, expected %r" % (line, testline))
+            self.fail('readline() after next() with empty buffer '
+                      'failed. Got %r, expected %r' % (line, testline))
         testline = testlines.pop(0)
-        buf = array("b", b"\x00" * len(testline))
+        buf = array('b', b'\x00' * len(testline))
         try:
             f.readinto(buf)
         except ValueError:
-            self.fail("readinto() after next() with supposedly empty "
-                      "iteration-buffer failed anyway")
+            self.fail('readinto() after next() with supposedly empty '
+                      'iteration-buffer failed anyway')
         line = buf.tobytes()
         if line != testline:
-            self.fail("readinto() after next() with empty buffer "
-                      "failed. Got %r, expected %r" % (line, testline))
+            self.fail('readinto() after next() with empty buffer '
+                      'failed. Got %r, expected %r' % (line, testline))
 
         testline = testlines.pop(0)
         try:
             line = f.read(len(testline))
         except ValueError:
-            self.fail("read() after next() with supposedly empty "
-                      "iteration-buffer failed anyway")
+            self.fail('read() after next() with supposedly empty '
+                      'iteration-buffer failed anyway')
         if line != testline:
-            self.fail("read() after next() with empty buffer "
-                      "failed. Got %r, expected %r" % (line, testline))
+            self.fail('read() after next() with empty buffer '
+                      'failed. Got %r, expected %r' % (line, testline))
         try:
             lines = f.readlines()
         except ValueError:
-            self.fail("readlines() after next() with supposedly empty "
-                      "iteration-buffer failed anyway")
+            self.fail('readlines() after next() with supposedly empty '
+                      'iteration-buffer failed anyway')
         if lines != testlines:
-            self.fail("readlines() after next() with empty buffer "
-                      "failed. Got %r, expected %r" % (line, testline))
+            self.fail('readlines() after next() with empty buffer '
+                      'failed. Got %r, expected %r' % (line, testline))
         f.close()
 
         # Reading after iteration hit EOF shouldn't hurt either
         f = gio_pyio.open(self.file, 'rb', native=False)
         try:
-            for line in f:
+            for _line in f:
                 pass
             try:
                 f.readline()
@@ -290,7 +294,7 @@ class GioFileLikeTests(unittest.TestCase):
                 f.read()
                 f.readlines()
             except ValueError:
-                self.fail("read* failed after next() consumed file")
+                self.fail('read* failed after next() consumed file')
         finally:
             f.close()
 
@@ -331,3 +335,29 @@ class GioFileLikeTests(unittest.TestCase):
             self.assertEqual(d, b'spameggs')
         finally:
             pass
+
+    def testJSON(self):
+        path = Path(Path(__file__).parent, 'example_data.json')
+        file = Gio.File.new_for_path(str(path))
+        f = gio_pyio.open(file, 'rb', native=False)
+        data = json.load(f)
+        f.close()
+        assert data['glossary']['title'] == 'example glossary'
+
+    def testGResource(self):
+        parent = Path(__file__).parent
+        subprocess.call(
+            'glib-compile-resources' +
+            ' --sourcedir=' + str(parent) +
+            ' --target=' + self.file.peek_path() +
+            ' ' + str(Path(parent, 'example.gresource.xml')),
+            shell=True,
+        )
+        resource = Gio.Resource.load(self.file.peek_path())
+        resource._register()
+
+        file = Gio.File.new_for_uri('resource:///example/example_data.json')
+        f = gio_pyio.open(file, 'rb')
+        data = json.load(f)
+        f.close()
+        assert data['glossary']['title'] == 'example glossary'

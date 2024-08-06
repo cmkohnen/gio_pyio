@@ -451,11 +451,11 @@ def open(file, mode='r', buffering=-1, encoding=None, errors=None,
     if native and path is not None:
         file_like = io.FileIO(
             path,
-            (creating and "x" or "") +
-            (reading and "r" or "") +
-            (writing and "w" or "") +
-            (appending and "a" or "") +
-            (updating and "+" or ""),
+            (creating and 'x' or '') +
+            (reading and 'r' or '') +
+            (writing and 'w' or '') +
+            (appending and 'a' or '') +
+            (updating and '+' or ''),
         )
     else:
         stream = None
