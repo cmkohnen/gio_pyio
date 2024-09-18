@@ -433,10 +433,8 @@ def open(file, mode='r', buffering=-1, encoding=None, errors=None,
     if binary and newline is not None:
         raise ValueError("binary mode doesn't take a newline argument")
 
-    # Not all files, have a path associated, in that case, we use the
-    # result of `file.get_basename()`
-    path = file.peek_path()
-    rep_str = file.get_basename() if path is None else path
+    # For non-native files we use the result of `file.get_basename()`
+    rep_str = file.peek_path() if file.is_native() else file.get_basename()
     file_type = file.query_file_type(Gio.FileQueryInfoFlags.NONE, None)
     if file_type == Gio.FileType.DIRECTORY:
         raise OSError(21, "Is a directory: '%s'" % rep_str)
@@ -448,9 +446,9 @@ def open(file, mode='r', buffering=-1, encoding=None, errors=None,
     if buffering == 0 and not binary:
         raise ValueError("can't have unbuffered text I/O")
 
-    if native and path is not None:
+    if native and file.is_native():
         file_like = io.FileIO(
-            path,
+            file.peek_path(),
             (creating and 'x' or '') +
             (reading and 'r' or '') +
             (writing and 'w' or '') +
