@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gio-pyio"
-version = "0.0.4"
+version = "0.0.5"
 authors = [
   { name="Christoph Matthias Kohnen", email="christoph.kohnen@disroot.org" },
 ]
